@@ -1,0 +1,5 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "COM-09032")(type "KiCad")(uri "${KIPRJMOD}/libs/COM-09032")(options "")(descr ""))
+  (lib (name "AMP_Custom")(type "KiCad")(uri "${KIPRJMOD}/libs/AMP_Custom.pretty")(options "")(descr ""))
+)
