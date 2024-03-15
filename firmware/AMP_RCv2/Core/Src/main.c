@@ -375,42 +375,48 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, OLED_NSS_Pin|LORA_NSS_Pin|OLED_DC_Pin|OLED_RST_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LORA_RST_Pin|LORA_NSS_Pin|OLED_NSS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LORA_RST_GPIO_Port, LORA_RST_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, OLED_RST_Pin|OLED_DC_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : JOYSTICK_R_SW_Pin */
-  GPIO_InitStruct.Pin = JOYSTICK_R_SW_Pin;
+  /*Configure GPIO pin : BTN_DOWN_Pin */
+  GPIO_InitStruct.Pin = BTN_DOWN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(JOYSTICK_R_SW_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(BTN_DOWN_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : BTN_RIGHT_Pin BTN_DOWN_Pin JOYSTICK_L_SW_Pin BTN_UP_Pin */
-  GPIO_InitStruct.Pin = BTN_RIGHT_Pin|BTN_DOWN_Pin|JOYSTICK_L_SW_Pin|BTN_UP_Pin;
+  /*Configure GPIO pins : BTN_RIGHT_Pin JOYSTICK_R_SW_Pin LORA_DIO0_Pin */
+  GPIO_InitStruct.Pin = BTN_RIGHT_Pin|JOYSTICK_R_SW_Pin|LORA_DIO0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : BTN_LEFT_Pin LORA_DIO0_Pin */
-  GPIO_InitStruct.Pin = BTN_LEFT_Pin|LORA_DIO0_Pin;
+  /*Configure GPIO pins : JOYSTICK_L_SW_Pin BTN_LEFT_Pin BTN_UP_Pin */
+  GPIO_InitStruct.Pin = JOYSTICK_L_SW_Pin|BTN_LEFT_Pin|BTN_UP_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : OLED_NSS_Pin LORA_NSS_Pin OLED_DC_Pin OLED_RST_Pin */
-  GPIO_InitStruct.Pin = OLED_NSS_Pin|LORA_NSS_Pin|OLED_DC_Pin|OLED_RST_Pin;
+  /*Configure GPIO pin : BAT_CHRG_STAT_Pin */
+  GPIO_InitStruct.Pin = BAT_CHRG_STAT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(BAT_CHRG_STAT_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : LORA_RST_Pin LORA_NSS_Pin OLED_NSS_Pin */
+  GPIO_InitStruct.Pin = LORA_RST_Pin|LORA_NSS_Pin|OLED_NSS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : OLED_RST_Pin OLED_DC_Pin */
+  GPIO_InitStruct.Pin = OLED_RST_Pin|OLED_DC_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : LORA_RST_Pin */
-  GPIO_InitStruct.Pin = LORA_RST_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LORA_RST_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);

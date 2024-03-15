@@ -104,7 +104,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
     PA0     ------> ADC1_IN1
     PA1     ------> ADC1_IN2
     */
-    GPIO_InitStruct.Pin = JOYSTICK_L_V_Pin|JOYSTICK_L_H_Pin;
+    GPIO_InitStruct.Pin = JOYSTICK_LEFT_H_Pin|JOYSTICK_LEFT_V_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -129,7 +129,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
     PA4     ------> ADC2_IN1
     PA5     ------> ADC2_IN2
     */
-    GPIO_InitStruct.Pin = JOYSTICK_R_V_Pin|JOYSTICK_R_H_Pin;
+    GPIO_InitStruct.Pin = JOYSTICK_RIGHT_V_Pin|JOYSTICK_RIGHT_H_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -164,7 +164,7 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
     PA0     ------> ADC1_IN1
     PA1     ------> ADC1_IN2
     */
-    HAL_GPIO_DeInit(GPIOA, JOYSTICK_L_V_Pin|JOYSTICK_L_H_Pin);
+    HAL_GPIO_DeInit(GPIOA, JOYSTICK_LEFT_H_Pin|JOYSTICK_LEFT_V_Pin);
 
   /* USER CODE BEGIN ADC1_MspDeInit 1 */
 
@@ -185,7 +185,7 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
     PA4     ------> ADC2_IN1
     PA5     ------> ADC2_IN2
     */
-    HAL_GPIO_DeInit(GPIOA, JOYSTICK_R_V_Pin|JOYSTICK_R_H_Pin);
+    HAL_GPIO_DeInit(GPIOA, JOYSTICK_RIGHT_V_Pin|JOYSTICK_RIGHT_H_Pin);
 
   /* USER CODE BEGIN ADC2_MspDeInit 1 */
 
