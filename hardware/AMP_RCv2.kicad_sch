@@ -11064,7 +11064,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Connector_USB:USB_C_Receptacle_GCT_USB4085"
+		(property "Footprint" "AMP_Custom:USB_C_Receptacle_Amphenol_C12402012"
 			(at 222.25 166.37 0)
 			(effects
 				(font
