@@ -7,7 +7,7 @@
 	(title_block
 		(title "AMP_RCv2")
 		(date "2024-03-14")
-		(rev "A")
+		(rev "B")
 		(company "Autonomous Motorsports Purdue")
 	)
 	(lib_symbols

@@ -7,7 +7,7 @@
 	(title_block
 		(title "AMP_RCv2")
 		(date "2024-03-14")
-		(rev "A")
+		(rev "B")
 		(company "Autonomous Motorsports Purdue")
 	)
 	(lib_symbols
@@ -8491,7 +8491,7 @@
 				)
 			)
 		)
-		(property "Footprint" "AMP_Custom:USB_C_Receptacle_Amphenol_C12402012"
+		(property "Footprint" "Connector_USB:USB_C_Receptacle_GCT_USB4085"
 			(at 44.45 54.61 0)
 			(effects
 				(font
