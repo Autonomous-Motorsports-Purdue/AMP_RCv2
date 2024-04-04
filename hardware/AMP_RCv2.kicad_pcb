@@ -13027,13 +13027,27 @@
 		)
 	)
 	(gr_text "AMP RCv2\nRevision B"
-		(at 163 130 0)
+		(at 162.3 131.1 0)
 		(layer "F.SilkS")
 		(uuid "fbd1c466-7b28-4b74-b1be-c2313d9ba405")
 		(effects
 			(font
-				(size 1 1)
-				(thickness 0.15)
+				(size 1.5 1.5)
+				(thickness 0.3)
+				(bold yes)
+			)
+			(justify left bottom)
+		)
+	)
+	(gr_text "JLCJLCJLCJLC"
+		(at 121.1 56.1 270)
+		(layer "F.SilkS")
+		(uuid "fcb067f3-c432-4a2d-8e50-8dcf10ba3be7")
+		(effects
+			(font
+				(size 1.5 1.5)
+				(thickness 0.3)
+				(bold yes)
 			)
 			(justify left bottom)
 		)
