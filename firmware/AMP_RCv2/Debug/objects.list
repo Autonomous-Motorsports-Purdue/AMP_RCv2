@@ -1,3 +1,5 @@
+"./Core/Src/LoRa.o"
+"./Core/Src/app_statemachine.o"
 "./Core/Src/main.o"
 "./Core/Src/stm32f3xx_hal_msp.o"
 "./Core/Src/stm32f3xx_it.o"

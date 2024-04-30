@@ -1,27 +1,30 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2024 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2024 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stdio.h"
+#include "string.h"
+#include "LoRa.h"
+#include "app_statemachine.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,6 +48,8 @@ ADC_HandleTypeDef hadc2;
 
 SPI_HandleTypeDef hspi1;
 
+TIM_HandleTypeDef htim1;
+
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -58,13 +63,49 @@ static void MX_USART2_UART_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
+LoRa myLoRa;
+Cont_Info Controller;
+int mode = 1;
+int auto_mode = 0;
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	switch (GPIO_Pin) {
+	case (BTN_UP_Pin): //BUtton up pin
+		switch (mode) {
+		case (3):
+			mode = 1; // 1 == idle, 2 == slow, 3 == fast
+			Controller = App_StateMachine_Update(Controller, mode);
+			break;
+		default:
+			mode += 1;
+			Controller = App_StateMachine_Update(Controller, mode);
+			break;
+		}
+		break;
+	case (BTN_RIGHT_Pin): //Emergency state
+		mode = 0; // Emergency mode
+		Controller = App_StateMachine_Update(Controller, mode);
+		break;
 
+	case (BTN_DOWN_Pin): //Automotive vs not automotive state
+		switch (auto_mode) {
+		case (0):
+			auto_mode = 1;
+			break;
+		default:
+			auto_mode = 0;
+			break;
+		}
+	default:
+		break;
+	}
+}
 /* USER CODE END 0 */
 
 /**
@@ -73,7 +114,20 @@ static void MX_ADC2_Init(void);
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
+	myLoRa = newLoRa();
+	myLoRa.CS_port =  LORA_NSS_GPIO_Port; //NSS_GPIO_Port;
+	myLoRa.CS_pin =  LORA_NSS_Pin;; // NSS_Pin;
+	myLoRa.reset_port = LORA_RST_GPIO_Port; // RESET_GPIO_Port;
+	myLoRa.reset_pin = LORA_RST_Pin; //RESET_Pin;
+	myLoRa.DIO0_port = LORA_DIO0_GPIO_Port; //DIO0_GPIO_Port;
+	myLoRa.DIO0_pin = LORA_DIO0_Pin; //DIO0_Pin;
+	myLoRa.hSPIx = &hspi1;
+	myLoRa.frequency = 915;             // default = 433 MHz
+
+	Controller = newController();
+
 
   /* USER CODE END 1 */
 
@@ -99,18 +153,33 @@ int main(void)
   MX_SPI1_Init();
   MX_ADC1_Init();
   MX_ADC2_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-
+	HAL_TIM_Base_Start_IT(&htim1);
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_Start(&hadc2);
+	LoRa_reset(&myLoRa);
+		uint16_t lora_status = LoRa_init(&myLoRa);
+		if (lora_status == LORA_OK)
+		{
+			int a = 0;
+//			Driver_UART_Transmit(NUCLEO, "LoRa OK\r\n\r\n");
+		}
+		else
+		{
+			int b = 0;
+//			Driver_UART_Transmit(NUCLEO, "LoRa FAILED\r\n\r\n");
+		}
+	//LoRa_init(&myLoRa);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+	}
   /* USER CODE END 3 */
 }
 
@@ -127,13 +196,12 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
-  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -152,8 +220,9 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC12;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_TIM1|RCC_PERIPHCLK_ADC12;
   PeriphClkInit.Adc12ClockSelection = RCC_ADC12PLLCLK_DIV1;
+  PeriphClkInit.Tim1ClockSelection = RCC_TIM1CLK_HCLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
@@ -302,17 +371,17 @@ static void MX_SPI1_Init(void)
   hspi1.Instance = SPI1;
   hspi1.Init.Mode = SPI_MODE_MASTER;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
   hspi1.Init.CRCPolynomial = 7;
   hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  hspi1.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
   if (HAL_SPI_Init(&hspi1) != HAL_OK)
   {
     Error_Handler();
@@ -320,6 +389,53 @@ static void MX_SPI1_Init(void)
   /* USER CODE BEGIN SPI1_Init 2 */
 
   /* USER CODE END SPI1_Init 2 */
+
+}
+
+/**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 6399;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 999;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
 
 }
 
@@ -383,26 +499,32 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : BTN_DOWN_Pin */
   GPIO_InitStruct.Pin = BTN_DOWN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(BTN_DOWN_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : BTN_RIGHT_Pin JOYSTICK_R_SW_Pin LORA_DIO0_Pin */
-  GPIO_InitStruct.Pin = BTN_RIGHT_Pin|JOYSTICK_R_SW_Pin|LORA_DIO0_Pin;
+  /*Configure GPIO pin : BTN_RIGHT_Pin */
+  GPIO_InitStruct.Pin = BTN_RIGHT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(BTN_RIGHT_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : JOYSTICK_L_SW_Pin BTN_LEFT_Pin BTN_UP_Pin */
-  GPIO_InitStruct.Pin = JOYSTICK_L_SW_Pin|BTN_LEFT_Pin|BTN_UP_Pin;
+  /*Configure GPIO pin : JOYSTICK_L_SW_Pin */
+  GPIO_InitStruct.Pin = JOYSTICK_L_SW_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(JOYSTICK_L_SW_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : BAT_CHRG_STAT_Pin */
   GPIO_InitStruct.Pin = BAT_CHRG_STAT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(BAT_CHRG_STAT_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : JOYSTICK_R_SW_Pin LORA_DIO0_Pin */
+  GPIO_InitStruct.Pin = JOYSTICK_R_SW_Pin|LORA_DIO0_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LORA_RST_Pin LORA_NSS_Pin OLED_NSS_Pin */
   GPIO_InitStruct.Pin = LORA_RST_Pin|LORA_NSS_Pin|OLED_NSS_Pin;
@@ -416,6 +538,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : BTN_LEFT_Pin BTN_UP_Pin */
+  GPIO_InitStruct.Pin = BTN_LEFT_Pin|BTN_UP_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
@@ -439,7 +567,16 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	if (htim->Instance == TIM1) {
+		//Controller = Controller_steer_thrust(Controller);
+		Controller.steer_input = HAL_ADC_GetValue(&hadc1); //controller input
+		Controller.thrust_input = HAL_ADC_GetValue(&hadc2); //controller input
+		Controller = Controller_steer_thrust(Controller); // gives actual speed and steering
+		//char *message = Controller_data(Controller); // sends and receives data through LoRa
 
+	}
+}
 /* USER CODE END 4 */
 
 /**
@@ -449,11 +586,10 @@ static void MX_GPIO_Init(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1) {
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 
