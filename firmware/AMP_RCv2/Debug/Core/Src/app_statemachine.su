@@ -1,0 +1,5 @@
+../Core/Src/app_statemachine.c:7:6:App_StateMachine_Init	4	static
+../Core/Src/app_statemachine.c:10:11:newController	56	static
+../Core/Src/app_statemachine.c:26:11:App_StateMachine_Update	24	static
+../Core/Src/app_statemachine.c:48:11:Controller_setting	24	static
+../Core/Src/app_statemachine.c:74:11:Controller_steer_thrust	24	static
