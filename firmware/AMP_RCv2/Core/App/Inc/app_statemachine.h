@@ -1,11 +1,6 @@
 #ifndef INC_APP_STATEMACHINE_H_
 #define INC_APP_STATEMACHINE_H_
 
-#define INITIAL_GAMESTATE	GAMESTATE_IDLE
-#define IDLE_SLEEP_TICKS	150000
-
-
-
 typedef enum // This is for the controller to switch states
 {
 	STATE_IDLE,		// idle state
