@@ -28,3 +28,13 @@ fp-info-cache
 # Exported BOM files
 *.xml
 *.csv
+
+# CubeIDE files
+.metadata/
+.settings/
+Debug/
+*.launch
+*.mxproject
+
+# Mac
+.DS_Store
