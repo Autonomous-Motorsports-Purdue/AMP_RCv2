@@ -8,34 +8,15 @@
 
 typedef enum // This is for the controller to switch states
 {
-	STATE_IDLE,			// car cannot move
-	STATE_SLOW,		// car goes a slow speed
-	STATE_FAST,		//  CAR GOES AT MAX SPEED
-	STATE_EMERGENCY_STOP,		// STOPS CART COMPLETLY UNTIL IT IS RESET
-	STATE_TEST,		// Playing start animation for player B
-
-} ControllerState;
-
-typedef struct
-{
-	ControllerState state;
-	int speed_max; // Speed of cart
-	int speed_min;
-	int thrust;
-	int steer;
-	int thrust_input;
-	int steer_input;
-	int e_brake;
-
-} Cont_Info;
+	STATE_IDLE,		// idle state
+	STATE_SLOW,		// car goes to slow speed
+	STATE_FAST,		// car goes to max speed
+	STATE_EBRAKE,	// after e-brake button pressed (cannot move)
+	STATE_ERROR		// catch-all error state
+} State_T;
 
 void App_StateMachine_Init();
-Cont_Info newController();
-Cont_Info App_StateMachine_Update(Cont_Info controller, int mode);
-Cont_Info Controller_steer_thrust(Cont_Info controller);
-Cont_Info Controller_setting(Cont_Info controller);
-//char* Controller_data(Cont_Info Controller, LoRa lora_1);
-//char* Controller_send_data(Cont_Info Controller, LoRa lora_1);
-
+void App_StateMachine_Tick();
+void App_StateMachine_ChangeState(State_T);
 
 #endif /* INC_APP_STATEMACHINE_H_ */

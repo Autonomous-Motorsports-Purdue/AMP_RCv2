@@ -20,12 +20,13 @@
 #include "main.h"
 #include "adc.h"
 #include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "app_statemachine.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -93,8 +94,14 @@ int main(void)
   MX_SPI1_Init();
   MX_ADC1_Init();
   MX_ADC2_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-
+  // disable timer interrupt for tick() to make sure init() function completes
+  HAL_TIM_Base_Stop_IT(&htim1);
+  // call init() function for state machine
+  App_StateMachine_Init();
+  // re-enable timer interrupt for tick()
+  HAL_TIM_Base_Start_IT(&htim1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -145,8 +152,9 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC12;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_TIM1|RCC_PERIPHCLK_ADC12;
   PeriphClkInit.Adc12ClockSelection = RCC_ADC12PLLCLK_DIV1;
+  PeriphClkInit.Tim1ClockSelection = RCC_TIM1CLK_HCLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
