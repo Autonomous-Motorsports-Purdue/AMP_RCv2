@@ -135,20 +135,20 @@ void App_StateMachine_Tick()
 	// statements to be called regardless of state
 	ticks_in_state += 1;
 
-	 u8g2_FirstPage(&u8g2);
-		      do
-		      {
-		        u8g2_SetFont(&u8g2, u8g2_font_ncenB14_tr);
-		        u8g2_DrawStr(&u8g2, 0, 15, "Hello World!");
-		        u8g2_DrawCircle(&u8g2, 64, 40, 10, U8G2_DRAW_ALL);
-		      } while (u8g2_NextPage(&u8g2));
+
+	u8g2_FirstPage(&u8g2);
+	u8g2_SetDrawColor(&u8g2, 1);
+
 	// TODO need lora driver send function here
 	// run state-specific code
 	switch (current_state)
 	{
 		case (STATE_IDLE):
 		{
-			App_StateMachine_ChangeState(STATE_EBRAKE);
+			//App_StateMachine_ChangeState(STATE_EBRAKE);
+			//TODO Change back before commit, just for simple testing
+			App_StateMachine_ChangeState(STATE_FAST);
+
 			break;
 		}
 
@@ -156,6 +156,18 @@ void App_StateMachine_Tick()
 		{
 			// TODO
 
+			// Display
+			do {
+				Draw_LoRa_Status();
+				Draw_State_Normal();
+			} while (u8g2_NextPage(&u8g2));
+			// End Display
+
+
+			//TODO Remove, Temp testing code  for swapping states
+			if (ticks_in_state > 50) {
+				App_StateMachine_ChangeState(STATE_FAST);
+			}
 			break;
 		}
 
@@ -163,6 +175,17 @@ void App_StateMachine_Tick()
 		{
 			// TODO
 
+			// Display
+			do {
+				Draw_LoRa_Status();
+				Draw_State_Normal();
+			} while (u8g2_NextPage(&u8g2));
+			// End Display
+
+			//TODO Remove, Temp testing code  for swapping states
+			if (ticks_in_state > 50) {
+				App_StateMachine_ChangeState(STATE_EBRAKE);
+			}
 			break;
 		}
 
@@ -173,12 +196,56 @@ void App_StateMachine_Tick()
 			{
 				// TODO only allow leaving after set amount of time
 			}
+			// Display
+			do {
+				if (ticks_in_state / 5 % 2 == 0) {
+					u8g2_SetDrawColor(&u8g2, 1);
+					u8g2_DrawBox(&u8g2, 0, 0, 128, 64);
+					u8g2_SetDrawColor(&u8g2, 0);
+				} else {
+					u8g2_SetDrawColor(&u8g2, 1);
+
+				}
+				Draw_LoRa_Status();
+				u8g2_SetFont(&u8g2, u8g2_font_helvR18_te);
+				u8g2_DrawStr(&u8g2, 14, 48, "EBRAKE");
+			} while (u8g2_NextPage(&u8g2));
+			// End Display
+
+
+			//TODO Remove, Temp testing code  for swapping states
+			if (ticks_in_state > 50) {
+				App_StateMachine_ChangeState(STATE_ERROR);
+			}
 			break;
+
 		}
 
 		case (STATE_ERROR):
 		{
 			// TODO
+
+			// Display
+			do {
+				if (ticks_in_state / 5 % 2 == 0) {
+					u8g2_SetDrawColor(&u8g2, 1);
+					u8g2_DrawBox(&u8g2, 0, 0, 128, 64);
+					u8g2_SetDrawColor(&u8g2, 0);
+				} else {
+					u8g2_SetDrawColor(&u8g2, 1);
+
+				}
+				Draw_LoRa_Status();
+				u8g2_SetFont(&u8g2, u8g2_font_helvR18_te);
+				u8g2_DrawStr(&u8g2, 20, 48, "ERROR");
+			} while (u8g2_NextPage(&u8g2));
+			// End Display
+
+
+			//TODO Remove, Temp testing code  for swapping states
+			if (ticks_in_state > 50) {
+				App_StateMachine_ChangeState(STATE_SLOW);
+			}
 			break;
 		}
 	}
@@ -194,6 +261,38 @@ void App_StateMachine_ChangeState(State_T new_state)
 	temp_data = 0;
 	// change state
 	current_state = new_state;
+}
+
+void Draw_LoRa_Status()
+{
+	u8g2_SetFont(&u8g2, u8g2_font_smart_patrol_nbp_tr);
+	u8g2_DrawStr(&u8g2, 86, 12, "LoRa:");
+	if (lora_debug == LORA_OK)
+	{
+		u8g2_DrawStr(&u8g2, 104, 24, "OK!");
+	}
+	else
+	{
+		u8g2_DrawStr(&u8g2, 86, 24, "FAIL");
+	}
+}
+
+void Draw_State_Normal()
+{
+	u8g2_SetFont(&u8g2, u8g2_font_smart_patrol_nbp_tr);
+	u8g2_DrawStr(&u8g2, 3, 12, "State:");
+	if (current_state == STATE_FAST)
+	{
+		u8g2_DrawStr(&u8g2, 3, 24, "Fast!");
+	}
+	else if (current_state == STATE_SLOW)
+	{
+		u8g2_DrawStr(&u8g2, 3, 24, "Slow");
+	}
+	else
+	{
+		u8g2_DrawStr(&u8g2, 3, 24, "NOT HANDLED");
+	}
 }
 
 
