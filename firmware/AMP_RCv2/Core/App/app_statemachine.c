@@ -1,10 +1,12 @@
+#include <u8g2.h>
+#include <u8x8.h>
 #include "spi.h"
 #include "usart.h"
 #include "math.h"
 
 #include "LoRa.h"
 
-#include "ssd1306.h" //https://github.com/afiskon/stm32-ssd1306
+static u8g2_t u8g2;
 
 #include "app_statemachine.h"
 
@@ -35,6 +37,50 @@ uint8_t thrust;			// variable holding current thrust value
 uint8_t steering;		// variable holding current steering value
 char buttons;			// variable holding activated buttons
 
+uint8_t u8x8_stm32_gpio_and_delay(U8X8_UNUSED u8x8_t *u8x8,
+    U8X8_UNUSED uint8_t msg, U8X8_UNUSED uint8_t arg_int,
+    U8X8_UNUSED void *arg_ptr)
+{
+  switch (msg)
+  {
+  case U8X8_MSG_GPIO_AND_DELAY_INIT:
+    HAL_Delay(1);
+    break;
+  case U8X8_MSG_DELAY_MILLI:
+    HAL_Delay(arg_int);
+    break;
+  case U8X8_MSG_GPIO_DC:
+    HAL_GPIO_WritePin(OLED_DC_GPIO_Port, OLED_DC_Pin, arg_int);
+    break;
+  case U8X8_MSG_GPIO_RESET:
+    HAL_GPIO_WritePin(OLED_RST_GPIO_Port, OLED_RST_Pin, arg_int);
+    break;
+  }
+  return 1;
+}
+uint8_t u8x8_byte_4wire_hw_spi(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int,
+    void *arg_ptr)
+{
+  switch (msg)
+  {
+  case U8X8_MSG_BYTE_SEND:
+    HAL_SPI_Transmit(&hspi1, (uint8_t *) arg_ptr, arg_int, 10000);
+    break;
+  case U8X8_MSG_BYTE_INIT:
+    break;
+  case U8X8_MSG_BYTE_SET_DC:
+    HAL_GPIO_WritePin(OLED_DC_GPIO_Port, OLED_DC_Pin, arg_int);
+    break;
+  case U8X8_MSG_BYTE_START_TRANSFER:
+    break;
+  case U8X8_MSG_BYTE_END_TRANSFER:
+    break;
+  default:
+    return 0;
+  }
+  return 1;
+}
+
 // function to be called before tick() function
 void App_StateMachine_Init()
 {
@@ -47,8 +93,6 @@ void App_StateMachine_Init()
 
 
 	// initialize OLED
-	ssd1306_Init();
-	ssd1306_Fill(SSD1306_COLOR_BLACK);
 
 	// initialize LoRa
 	LoRa lora;
@@ -76,7 +120,9 @@ void App_StateMachine_Init()
 	}
 
 	// initialize OLED
-	
+	u8g2_Setup_ssd1306_128x64_noname_1(&u8g2, U8G2_R0, u8x8_byte_4wire_hw_spi, u8x8_stm32_gpio_and_delay);
+	u8g2_InitDisplay(&u8g2);
+	u8g2_SetPowerSave(&u8g2, 0);
 
 
 	// set current state to idle
@@ -89,23 +135,13 @@ void App_StateMachine_Tick()
 	// statements to be called regardless of state
 	ticks_in_state += 1;
 
-	ssd1306_Fill(SSD1306_COLOR_BLACK); // clear OLED display
-	ssd1306_SetCursor(0, 0); // set cursor to top left corner
-	if (lora_debug == LORA_OK)
-	{
-		ssd1306_WriteString("LoRa OK", Font_11x18, SSD1306_COLOR_WHITE);
-	}
-	else
-	{
-		ssd1306_WriteString("LoRa FAILED", Font_11x18, SSD1306_COLOR_WHITE);
-	}
-
-	sssd1306_SetCursor(0, 20);
-	ssd1306_WriteString("State: ", Font_11x18, SSD1306_COLOR_WHITE);
-
-
-
-
+	 u8g2_FirstPage(&u8g2);
+		      do
+		      {
+		        u8g2_SetFont(&u8g2, u8g2_font_ncenB14_tr);
+		        u8g2_DrawStr(&u8g2, 0, 15, "Hello World!");
+		        u8g2_DrawCircle(&u8g2, 64, 40, 10, U8G2_DRAW_ALL);
+		      } while (u8g2_NextPage(&u8g2));
 	// TODO need lora driver send function here
 	// run state-specific code
 	switch (current_state)
@@ -119,25 +155,20 @@ void App_StateMachine_Tick()
 		case (STATE_SLOW):
 		{
 			// TODO
-			ssd1306(SetCursor(0, 40));
-			ssd1306_WriteString("SLOW", Font_11x18, SSD1306_COLOR_WHITE);
-			Draw_Speedometer();
+
 			break;
 		}
 
 		case (STATE_FAST):
 		{
 			// TODO
-			ssd1306(SetCursor(0, 40));
-			ssd1306_WriteString("FAST", Font_11x18, SSD1306_COLOR_WHITE);
-			Draw_Speedometer();
+
 			break;
 		}
 
 		case (STATE_EBRAKE):
 		{
-			ssd1306_SetCursor(0, 40);
-			ssd1306_WriteString("EBRAKE", Font_11x18, SSD1306_COLOR_WHITE);
+
 			if (ticks_in_state > (EBRAKE_MIN_SEC * TICKS_PER_SEC))
 			{
 				// TODO only allow leaving after set amount of time
@@ -148,15 +179,12 @@ void App_StateMachine_Tick()
 		case (STATE_ERROR):
 		{
 			// TODO
-			ssd1306(SetCursor(0, 40));
-			ssd1306_WriteString("ERROR", Font_11x18, SSD1306_COLOR_WHITE);
 			break;
 		}
 	}
 
 
 	// update oled display
-	ssd1306_UpdateScreen();
 }
 
 void App_StateMachine_ChangeState(State_T new_state)
@@ -171,23 +199,7 @@ void App_StateMachine_ChangeState(State_T new_state)
 
 void Draw_Speedometer()
 {
-	// draw circle outline
-	ssd1306_DrawArc(64, 32, 30, 45, 315, SSD1306_COLOR_WHITE);
-	ssd1306_DrawArc(64, 32, 20, 45, 315, SSD1306_COLOR_WHITE);
-	ssd1306_Line(64, 12, 64, 52, SSD1306_COLOR_WHITE);
-	ssd1306_Line(34, 32, 94, 32, SSD1306_COLOR_WHITE);
 
-	// draw speed indicator
-	for (int i = 20; i < 30; i++)
-	{
-		ssd1306_DrawArc(64, 32, i, 45, 45 + abs(thrust/SPEED_FWD_FAST * 270), SSD1306_COLOR_WHITE);
-	}
-
-	// draw speed number in middle
-	ssd1306_SetCursor(54, 24);
-	char speed[2];
-	sprintf(speed, "%d", thrust);
-	ssd1306_WriteString(speed, Font_11x18, SSD1306_COLOR_WHITE);
 
 
 
@@ -195,17 +207,6 @@ void Draw_Speedometer()
 
 void Draw_Steering() 
 {
-	// draw hollow rectangle along bottom
-	ssd1306_DrawRectangle(4, 48, 124, 60, SSD1306_COLOR_WHITE);
-
-	// draw filled rectangle for steering starting in the center and going to where the steering is pointing
-	ssd1306_FillRectangle(64, 48, 64 + (steering), 60, SSD1306_COLOR_WHITE); // TODO: check what the steering variable is holding
-
-	// write steering text on the top right of the rectangle
-	ssd1306_SetCursor(96, 100);
-	char steer[3];
-	sprintf(steer, "%d", steering);
-	ssd1306_WriteString(steer, Font_11x18, SSD1306_COLOR_WHITE);
 
 
 }

@@ -13,5 +13,6 @@ typedef enum // This is for the controller to switch states
 void App_StateMachine_Init();
 void App_StateMachine_Tick();
 void App_StateMachine_ChangeState(State_T);
-
+void Draw_Speedometer();
+void Draw_Steering();
 #endif /* INC_APP_STATEMACHINE_H_ */
