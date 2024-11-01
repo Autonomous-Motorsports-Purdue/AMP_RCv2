@@ -1,3 +1,4 @@
+#include <AMP.h>
 #include <u8g2.h>
 #include <u8x8.h>
 #include "spi.h"
@@ -5,6 +6,7 @@
 #include "math.h"
 
 #include "LoRa.h"
+
 
 static u8g2_t u8g2;
 
@@ -93,6 +95,19 @@ void App_StateMachine_Init()
 
 
 	// initialize OLED
+	u8g2_Setup_ssd1306_128x64_noname_1(&u8g2, U8G2_R0, u8x8_byte_4wire_hw_spi, u8x8_stm32_gpio_and_delay);
+	u8g2_InitDisplay(&u8g2);
+	u8g2_SetPowerSave(&u8g2, 0);
+	u8g2_SetDrawColor(&u8g2, 1);
+	u8g2_FirstPage(&u8g2);
+	do {
+		u8g2_DrawXBM(&u8g2, 0, 0, AMPIMG_width, AMPIMG_height, &AMPIMG_bits);
+	} while (u8g2_NextPage(&u8g2));
+	u8g2_SetDrawColor(&u8g2, 2);
+	HAL_Delay(1000);  // This is totally optional, i just think it helps see it and is cool
+
+
+
 
 	// initialize LoRa
 	LoRa lora;
@@ -120,9 +135,7 @@ void App_StateMachine_Init()
 	}
 
 	// initialize OLED
-	u8g2_Setup_ssd1306_128x64_noname_1(&u8g2, U8G2_R0, u8x8_byte_4wire_hw_spi, u8x8_stm32_gpio_and_delay);
-	u8g2_InitDisplay(&u8g2);
-	u8g2_SetPowerSave(&u8g2, 0);
+
 
 
 	// set current state to idle
