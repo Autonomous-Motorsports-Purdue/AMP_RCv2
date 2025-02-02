@@ -36,6 +36,7 @@ uint32_t temp_data;			// to hold miscellaneous data within a state
 uint16_t lora_debug;		// variable holding LoRa debug data
 
 uint8_t thrust;			// variable holding current thrust value
+char *thrust_str;		// variable holding string representation of thrust
 uint8_t steering;		// variable holding current steering value
 char buttons;			// variable holding activated buttons
 
@@ -89,9 +90,10 @@ void App_StateMachine_Init()
 	// default variable values
 	ticks_in_state = 0;
 	temp_data = 0;
-	thrust = 0;
-	steering = 128;
+	thrust =127;
+	steering = 50;
 	buttons = 0;
+	thrust_str = (char*)malloc(13 * sizeof(char));
 
 
 	// initialize OLED
@@ -134,8 +136,6 @@ void App_StateMachine_Init()
 		HAL_UART_Transmit(&huart2, (unsigned char *) "LoRa FAILED\r\n", 13, 10);
 	}
 
-	// initialize OLED
-
 
 
 	// set current state to idle
@@ -148,6 +148,10 @@ void App_StateMachine_Tick()
 	// statements to be called regardless of state
 	ticks_in_state += 1;
 
+
+	//TODO Remove temp testing code
+	thrust = (thrust + 1) % 127;
+	steering = (steering + 1) % 250;
 
 	u8g2_FirstPage(&u8g2);
 	u8g2_SetDrawColor(&u8g2, 1);
@@ -192,11 +196,13 @@ void App_StateMachine_Tick()
 			do {
 				Draw_LoRa_Status();
 				Draw_State_Normal();
+				Draw_Speedometer();
+				Draw_Steering();
 			} while (u8g2_NextPage(&u8g2));
 			// End Display
 
 			//TODO Remove, Temp testing code  for swapping states
-			if (ticks_in_state > 50) {
+			if (ticks_in_state > 500) {
 				App_StateMachine_ChangeState(STATE_EBRAKE);
 			}
 			break;
@@ -311,8 +317,16 @@ void Draw_State_Normal()
 
 void Draw_Speedometer()
 {
+	u8g2_DrawArc(&u8g2, 73, 40, 19, 240, 144);
+	u8g2_DrawArc(&u8g2, 73, 40, 25, 240, 144);
+	for (int i = 19; i <= 25; i++) {
 
-
+		u8g2_DrawArc(&u8g2, 73, 40, i, (int) (239 + (1.26 * (127 - thrust))) % 256, 144);
+		u8g2_DrawArc(&u8g2, 73, 40, i, 239, 241);
+	}
+	sprintf(thrust_str, "%02d", thrust);
+	u8g2_SetFont(&u8g2, u8g2_font_smart_patrol_nbp_tr);
+	u8g2_DrawStr(&u8g2, 64, 42, thrust_str);
 
 
 }
@@ -320,5 +334,14 @@ void Draw_Speedometer()
 void Draw_Steering() 
 {
 
+	u8g2_DrawRFrame(&u8g2, 4, 54, 120, 7, 3);
+	u8g2_DrawBox(&u8g2, 62, 54, 4, 7);
+	if (steering < 127) {
+		u8g2_DrawRBox(&u8g2, 64 - (int) (steering / 2.03), 54, (int) (steering / 2.03), 7, 3);
+	} else if (steering > 127) {
+		u8g2_DrawRBox(&u8g2, 64, 54, (int) ((steering - 126) / 2.1), 7, 3);
+	}
+
 
 }
+;
