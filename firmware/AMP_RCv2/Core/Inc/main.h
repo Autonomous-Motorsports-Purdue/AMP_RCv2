@@ -110,7 +110,13 @@ void Error_Handler(void);
 #define BTN_UP_EXTI_IRQn EXTI9_5_IRQn
 
 /* USER CODE BEGIN Private defines */
-
+#define SSD1306_SPI_PORT        hspi1
+#define SSD1306_CS_Port         OLED_NSS_GPIO_Port
+#define SSD1306_CS_Pin          OLED_NSS_Pin
+#define SSD1306_DC_Port         OLED_DC_GPIO_Port
+#define SSD1306_DC_Pin          OLED_DC_Pin
+#define SSD1306_Reset_Port      OLED_RST_GPIO_Port
+#define SSD1306_Reset_Pin       OLED_RST_Pin
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
