@@ -3,7 +3,9 @@
 #include <u8x8.h>
 #include "spi.h"
 #include "usart.h"
-#include "math.h"
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "LoRa.h"
 
@@ -34,10 +36,10 @@ uint32_t ticks_in_state;	// variable holding number of ticks in current state
 uint32_t temp_data;			// to hold miscellaneous data within a state
 
 uint16_t lora_debug;		// variable holding LoRa debug data
+int32_t thrust;			// variable holding current thrust value
+int32_t steering;		// variable holding current steering value
 
-uint8_t thrust;			// variable holding current thrust value
 char *thrust_str;		// variable holding string representation of thrust
-uint8_t steering;		// variable holding current steering value
 char buttons;			// variable holding activated buttons
 
 uint8_t u8x8_stm32_gpio_and_delay(U8X8_UNUSED u8x8_t *u8x8,
@@ -90,8 +92,8 @@ void App_StateMachine_Init()
 	// default variable values
 	ticks_in_state = 0;
 	temp_data = 0;
-	thrust =127;
-	steering = 50;
+	thrust = 0;
+	steering = 128;
 	buttons = 0;
 	thrust_str = (char*)malloc(13 * sizeof(char));
 
@@ -149,9 +151,7 @@ void App_StateMachine_Tick()
 	ticks_in_state += 1;
 
 
-	//TODO Remove temp testing code
-	thrust = (thrust + 1) % 127;
-	steering = (steering + 1) % 250;
+
 
 	u8g2_FirstPage(&u8g2);
 	u8g2_SetDrawColor(&u8g2, 1);
@@ -162,9 +162,8 @@ void App_StateMachine_Tick()
 	{
 		case (STATE_IDLE):
 		{
-			//App_StateMachine_ChangeState(STATE_EBRAKE);
-			//TODO Change back before commit, just for simple testing
-			App_StateMachine_ChangeState(STATE_FAST);
+
+			App_StateMachine_ChangeState(STATE_IDLE); // @gyoder confirm
 
 			break;
 		}
@@ -261,10 +260,7 @@ void App_StateMachine_Tick()
 			// End Display
 
 
-			//TODO Remove, Temp testing code  for swapping states
-			if (ticks_in_state > 50) {
-				App_StateMachine_ChangeState(STATE_SLOW);
-			}
+
 			break;
 		}
 	}
@@ -281,6 +277,91 @@ void App_StateMachine_ChangeState(State_T new_state)
 	// change state
 	current_state = new_state;
 }
+
+void Controller_setting(State_T new_state, uint32_t joystick_x, uint32_t joystick_y){
+	switch(new_state)
+	{
+			case (STATE_IDLE):
+				thrust = 0;
+				steering = 0;
+				break;
+
+			case (STATE_SLOW):
+					if(joystick_x >=2400)
+						thrust = joystick_x * SPEED_FWD_SLOW;
+					else if(joystick_x <= 1600)
+						thrust = joystick_x * SPEED_REV_SLOW;
+					else
+						thrust = 2000;
+					if(joystick_y >=2400)
+						steering = joystick_y * SPEED_FWD_SLOW;
+					else if(joystick_y <= 1600 )
+						steering = joystick_y * SPEED_REV_SLOW;
+					else
+						steering = 2000;
+				break;
+			case (STATE_FAST):
+				thrust = SPEED_FWD_FAST;
+				steering = SPEED_REV_FAST;
+
+				break;
+			case (STATE_EBRAKE):
+				thrust = 2000;
+				steering = 2000;
+				break;
+			default:
+				break;
+		}
+
+}
+
+//void Controller_steer_thrust(Cont_Info controller){
+//	if (controller.thrust_input < -200)
+//		controller.thrust = controller.thrust_input * controller.speed_max;
+//		else if(controller.thrust_input > 200 )
+//			controller.thrust = controller.thrust * controller.speed_max;
+//		else
+//			controller.thrust = 0;
+//	if (controller.steer_input < -200)
+//		controller.steer = controller.steer_input;
+//		else if(controller.steer_input > 200 )
+//			controller.steer = controller.steer_input;
+//		else{
+//			controller.steer = 0;
+//		}
+//	//return controller;
+//}
+
+char* Controller_data(){
+//	int length = snprintf(NULL, 0, "A%c%c%c%c", controller.thrust, controller.steer, controller.e_brake, controller.state);
+	char* message;
+//	controller.info = (char*)malloc(length + 1); // +1 for null terminator
+//	  // Format the string
+//	snprintf(controller.info, length + 1, "A%c%c%c%c", controller.thrust, controller.steer, controller.e_brake, controller.state);
+//	 message = Controller_send_data(controller, lora_1);
+//	free(controller.info);
+	return message;
+//	char uart2_msg[UART2_MSG_LENGTH];	// buffer for messages to send over UART2
+
+}
+
+// Set desired state
+char* Controller_send_data()
+{
+	uint8_t pass = 0;
+	uint8_t pass_1 = 0;
+	char message[40];
+//	pass =  LoRa_transmit(lora_1, &controller.info , size(controller.info), 50);
+//	pass_1 += LoRa_receive(lora_1, &message , 40);
+//	if (pass != 2){
+//		message = ("Lora did not recieve sigal");
+//	}
+//	if (pass_1 != 1){
+//		message = ("Lora did not recieve signal");
+//	}
+	return message;
+}
+
 
 void Draw_LoRa_Status()
 {
@@ -324,7 +405,7 @@ void Draw_Speedometer()
 		u8g2_DrawArc(&u8g2, 73, 40, i, (int) (239 + (1.26 * (127 - thrust))) % 256, 144);
 		u8g2_DrawArc(&u8g2, 73, 40, i, 239, 241);
 	}
-	sprintf(thrust_str, "%02d", thrust);
+	sprintf(thrust_str, "%02ld", thrust);
 	u8g2_SetFont(&u8g2, u8g2_font_smart_patrol_nbp_tr);
 	u8g2_DrawStr(&u8g2, 64, 42, thrust_str);
 

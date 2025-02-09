@@ -31,7 +31,9 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+#define BUTTON_SLOW_PIN BTN_LEFT_Pin // PB7
+#define BUTTON_EBRAKE_PIN BTN_RIGHT_Pin // PA3
+#define BUTTON_FAST_PIN BTN_UP_Pin //PF1
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -47,11 +49,13 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+uint32_t joystick_x;
+uint32_t joystick_y;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -90,11 +94,14 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART2_UART_Init();
   MX_SPI1_Init();
   MX_ADC1_Init();
   MX_ADC2_Init();
   MX_TIM1_Init();
+  MX_USART2_UART_Init();
+
+  /* Initialize interrupts */
+  MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
   // disable timer interrupt for tick() to make sure init() function completes
   HAL_TIM_Base_Stop_IT(&htim1);
@@ -102,6 +109,9 @@ int main(void)
   App_StateMachine_Init();
   // re-enable timer interrupt for tick()
   HAL_TIM_Base_Start_IT(&htim1);
+
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -161,8 +171,63 @@ void SystemClock_Config(void)
   }
 }
 
-/* USER CODE BEGIN 4 */
+/**
+  * @brief NVIC Configuration.
+  * @retval None
+  */
+static void MX_NVIC_Init(void)
+{
+  /* EXTI9_5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+}
 
+/* USER CODE BEGIN 4 */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+    if (htim->Instance == TIM1) { // Check if the interrupt is from TIM1
+
+        // Start ADC conversion for X-axis
+        HAL_ADC_Start(&hadc1); // Start ADC for X-axis
+        HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY); // Wait for conversion to complete
+        joystick_x = HAL_ADC_GetValue(&hadc1); // Read the ADC value for X-axis
+
+        // Start ADC conversion for Y-axis
+        HAL_ADC_Start(&hadc2); // Start ADC for Y-axis
+        HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY); // Wait for conversion to complete
+        joystick_y = HAL_ADC_GetValue(&hadc2); // Read the ADC value for Y-axis
+
+        // Process joystick values (e.g., update thrust and steering)
+
+
+        // Optional: send joystick values via LoRa or process them further
+        Controller_setting(STATE_SLOW, joystick_x, joystick_y);
+    }
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  /* Prevent unused argument(s) compilation warning */
+  switch (GPIO_Pin) {
+          case BUTTON_SLOW_PIN: // Replace with your actual button pin
+        	  App_StateMachine_ChangeState(STATE_SLOW);
+              break;
+
+          case BUTTON_FAST_PIN: // Replace with your actual button pin
+        	  App_StateMachine_ChangeState(STATE_FAST);
+              break;
+
+          case BUTTON_EBRAKE_PIN: // Replace with your actual button pin
+        	  App_StateMachine_ChangeState(STATE_EBRAKE);
+              break;
+
+          default:
+        	  //App_StateMachine_ChangeState(STATE_ERROR); // Handle unknown state
+               break;
+  /* NOTE: This function should not be modified, when the callback is needed,
+           the HAL_GPIO_EXTI_Callback could be implemented in the user file
+   */
+  	  	  }
+}
 /* USER CODE END 4 */
 
 /**
