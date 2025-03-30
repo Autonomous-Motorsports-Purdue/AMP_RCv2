@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "LoRa.h"
+#include "controller_packet.h"
 
 
 static u8g2_t u8g2;
@@ -278,88 +279,11 @@ void App_StateMachine_ChangeState(State_T new_state)
 	current_state = new_state;
 }
 
-void Controller_setting(State_T new_state, uint32_t joystick_x, uint32_t joystick_y){
-	switch(new_state)
+void Controller_setting(uint32_t joystick_x, uint32_t joystick_y){
+	switch(current_state)
 	{
-			case (STATE_IDLE):
-				thrust = 0;
-				steering = 0;
-				break;
-
-			case (STATE_SLOW):
-					if(joystick_x >=2400)
-						thrust = joystick_x * SPEED_FWD_SLOW;
-					else if(joystick_x <= 1600)
-						thrust = joystick_x * SPEED_REV_SLOW;
-					else
-						thrust = 2000;
-					if(joystick_y >=2400)
-						steering = joystick_y * SPEED_FWD_SLOW;
-					else if(joystick_y <= 1600 )
-						steering = joystick_y * SPEED_REV_SLOW;
-					else
-						steering = 2000;
-				break;
-			case (STATE_FAST):
-				thrust = SPEED_FWD_FAST;
-				steering = SPEED_REV_FAST;
-
-				break;
-			case (STATE_EBRAKE):
-				thrust = 2000;
-				steering = 2000;
-				break;
-			default:
-				break;
-		}
-
-}
-
-//void Controller_steer_thrust(Cont_Info controller){
-//	if (controller.thrust_input < -200)
-//		controller.thrust = controller.thrust_input * controller.speed_max;
-//		else if(controller.thrust_input > 200 )
-//			controller.thrust = controller.thrust * controller.speed_max;
-//		else
-//			controller.thrust = 0;
-//	if (controller.steer_input < -200)
-//		controller.steer = controller.steer_input;
-//		else if(controller.steer_input > 200 )
-//			controller.steer = controller.steer_input;
-//		else{
-//			controller.steer = 0;
-//		}
-//	//return controller;
-//}
-
-char* Controller_data(){
-//	int length = snprintf(NULL, 0, "A%c%c%c%c", controller.thrust, controller.steer, controller.e_brake, controller.state);
-	char* message;
-//	controller.info = (char*)malloc(length + 1); // +1 for null terminator
-//	  // Format the string
-//	snprintf(controller.info, length + 1, "A%c%c%c%c", controller.thrust, controller.steer, controller.e_brake, controller.state);
-//	 message = Controller_send_data(controller, lora_1);
-//	free(controller.info);
-	return message;
-//	char uart2_msg[UART2_MSG_LENGTH];	// buffer for messages to send over UART2
-
-}
-
-// Set desired state
-char* Controller_send_data()
-{
-	uint8_t pass = 0;
-	uint8_t pass_1 = 0;
-	char message[40];
-//	pass =  LoRa_transmit(lora_1, &controller.info , size(controller.info), 50);
-//	pass_1 += LoRa_receive(lora_1, &message , 40);
-//	if (pass != 2){
-//		message = ("Lora did not recieve sigal");
-//	}
-//	if (pass_1 != 1){
-//		message = ("Lora did not recieve signal");
-//	}
-	return message;
+		//TODO: update joystick data
+	}
 }
 
 

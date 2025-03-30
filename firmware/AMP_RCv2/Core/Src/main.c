@@ -200,7 +200,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 
         // Optional: send joystick values via LoRa or process them further
-        Controller_setting(STATE_SLOW, joystick_x, joystick_y);
+        Controller_setting(joystick_x, joystick_y);
     }
 }
 
