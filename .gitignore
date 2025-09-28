@@ -38,3 +38,8 @@ Debug/
 
 # Mac
 .DS_Store
+
+firmware/.cache/
+firmware/.clangd
+firmware/compile_commands.json
+firmware/.pio
