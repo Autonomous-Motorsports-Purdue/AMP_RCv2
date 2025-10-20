@@ -7,6 +7,8 @@ typedef enum    // This is for the controller to switch states
   STATE_ERROR   // catch-all error state
 } State_T;
 
+volatile extern char state_flag; //Represents current state (s = slow, e = ebrake, f = fast)
+
 void App_StateMachine_Init();
 void App_StateMachine_Tick();
 void App_StateMachine_ChangeState(State_T);
