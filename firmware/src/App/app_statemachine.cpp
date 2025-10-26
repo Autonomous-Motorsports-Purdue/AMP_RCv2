@@ -26,6 +26,8 @@ U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, OLED_NSS, OLED_DC,
 #define LORA_CS_PIN PA10
 #define LORA_RST_PIN PA9
 #define LORA_DIO0_PIN PA12
+#define THROTTLE_Y PA1
+#define STEERING_X PA5
 
 #define TICKS_PER_SEC 10
 #define EBRAKE_MIN_SEC 5
@@ -41,7 +43,6 @@ U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, OLED_NSS, OLED_DC,
 #define BTN_EBRAKE 0b00000001
 #define BTN_AUTO 0b00000010
 #define BTN_SLOW 0b00000100
-
 
 
 
@@ -70,6 +71,8 @@ void App_StateMachine_Init() {
   thrust = 0;
   steering = 128;
   buttons = 0;
+
+  analogReadResolution(12);
 
   // Initialize OLED
   Serial.println("A");
@@ -125,7 +128,11 @@ void App_StateMachine_Tick() {
   LoRa.endPacket();
 
   ticks_in_state++; 
+
   
+  uint16_t throttle_y = analogRead(THROTTLE_Y);
+  uint16_t steering_x = analogRead(STEERING_X);
+  Controller_setting(steering_x, throttle_y);
 
 
   // Clear display buffer
@@ -139,10 +146,10 @@ void App_StateMachine_Tick() {
     u8g2.setFont(u8g2_font_luBS19_tr);
     u8g2.drawStr(35, 50, "IDLE");
 
-    // Auto transition to SLOW for demo
+    /* Auto transition to SLOW for demo
     if (ticks_in_state > 20) {
       App_StateMachine_ChangeState(STATE_SLOW);
-    }
+    }*/
     break;
   }
 
@@ -152,10 +159,10 @@ void App_StateMachine_Tick() {
     Draw_Speedometer();
     Draw_Steering();
 
-    // Demo transition
+    /* Demo transition
     if (ticks_in_state > 50) {
       App_StateMachine_ChangeState(STATE_FAST);
-    }
+    } */
     break;
   }
 
@@ -165,10 +172,10 @@ void App_StateMachine_Tick() {
     Draw_Speedometer();
     Draw_Steering();
 
-    // Demo transition
+    /* Demo transition
     if (ticks_in_state > 100) {
       App_StateMachine_ChangeState(STATE_EBRAKE);
-    }
+    }*/
     break;
   }
 
@@ -269,10 +276,18 @@ void App_StateMachine_ChangeState(State_T new_state) {
   //Serial.println(new_state);
 }
 
-void Controller_setting(uint32_t joystick_x, uint32_t joystick_y) {
+void Controller_setting(uint16_t joystick_x, uint16_t joystick_y) {
   // Convert joystick values to thrust and steering
-  thrust = map(joystick_y, 0, 1023, -100, 100);
-  steering = map(joystick_x, 0, 1023, 0, 255);
+  
+  thrust = map(joystick_y, 0, 4094, -255, 255);
+  steering = map(joystick_x, 0, 4094, 255, 0);
+
+  if (current_state == STATE_SLOW) {
+    thrust /= 4;
+  } else if (current_state == STATE_FAST) {
+    thrust /= 2;
+  }
+
 }
 
 void Draw_LoRa_Status() {
@@ -315,30 +330,45 @@ void Draw_Speedometer() {
   // Draw thrust value
 
 
-  sprintf(thrust_str, "%02ld", abs(thrust));
+  sprintf(thrust_str, "%02ld", thrust);
 
  
-  //Shifts thrust value if it changes from 2 to 3 digits
+  //Shifts thrust value if it changes number of digits or sign
   u8g2.setFont(u8g2_font_tenthinguys_tu);
-  if (abs(thrust >= 100)) {
+  if (thrust >= 100 && thrust < 200) {
     u8g2.drawStr(55, 43, thrust_str);
 
-  } else if (abs(thrust) < 100) {
+  } else if (thrust < 100 && thrust >= 0) {
     u8g2.drawStr(57, 43, thrust_str);
 
+  } else if (thrust >= 200) {
+    u8g2.drawStr(53, 43, thrust_str);
+  } else if (thrust < 0 && thrust > -10) {
+    u8g2.drawStr(55, 43, thrust_str);
+  } else if (thrust <= -10 && thrust > -100){
+    u8g2.drawStr(53, 43, thrust_str);
+  } else if (thrust <= -100 && thrust > -200) {
+    u8g2.drawStr(51, 43, thrust_str);
+  } else if (thrust <= -200){
+    u8g2.drawStr(49, 43, thrust_str);
   }
 }
 
 void Draw_Steering() {
   // Draw steering indicator
+
   u8g2.drawRFrame(4, 54, 120, 7, 3);
   u8g2.drawBox(62, 54, 4, 7);
 
-  if (steering < 127) {
-    u8g2.drawRBox(64 - (steering / 2), 54, (steering / 2), 7, 3);
-  } else if (steering > 127) {
-    u8g2.drawRBox(64, 54, ((steering - 126) / 2), 7, 3);
+  if (steering < 119) {
+    int width =  map(steering, 0, 127, 58, 0);
+    u8g2.drawRBox(62 - width, 54, width, 7, 3);
+
+  } else if (steering > 135) {
+    int width = map(steering, 127, 255, 0, 58);
+    u8g2.drawRBox(66, 54, width, 7, 3);
   }
+
 }
 
 void handleSerialCommand(char cmd) {
@@ -360,3 +390,4 @@ void handleSerialCommand(char cmd) {
     break;
   }
 }
+
