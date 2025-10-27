@@ -18,6 +18,11 @@
 #define BUTTON_SLOW PB6
 #define BUTTON_FAST PF1
 
+#define JOYSTICK_DEADZONE_X 150
+#define JOYSTICK_DEADZONE_Y 150
+#define JOYSTICK_CENTER_X 2047
+#define JOYSTICK_CENTER_Y 2047
+
 // Hardware SPI OLED object
 U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, OLED_NSS, OLED_DC,
                                             OLED_RST);
@@ -120,6 +125,8 @@ void App_StateMachine_Init() {
   App_StateMachine_ChangeState(STATE_IDLE);
 
 }
+
+
 
 void App_StateMachine_Tick() {
 
@@ -279,8 +286,35 @@ void App_StateMachine_ChangeState(State_T new_state) {
 void Controller_setting(uint16_t joystick_x, uint16_t joystick_y) {
   // Convert joystick values to thrust and steering
   
-  thrust = map(joystick_y, 0, 4094, -255, 255);
-  steering = map(joystick_x, 0, 4094, 255, 0);
+
+  if(abs(joystick_y - JOYSTICK_CENTER_Y) < JOYSTICK_DEADZONE_Y){
+    thrust = 0;
+  } else {
+    if (joystick_y < JOYSTICK_CENTER_Y) {
+    thrust = map(joystick_y, 0, JOYSTICK_CENTER_Y - JOYSTICK_DEADZONE_Y, -255, 0);
+    } else {
+      thrust = map(joystick_y,  JOYSTICK_CENTER_Y + JOYSTICK_DEADZONE_Y, 4094, 0, 255);
+    }
+
+
+  }
+
+if(abs(joystick_x - JOYSTICK_CENTER_X) < JOYSTICK_DEADZONE_X){
+    steering = 128;
+  } else {
+    if (joystick_x < JOYSTICK_CENTER_X) {
+      steering = map(joystick_x, 0, JOYSTICK_CENTER_X - JOYSTICK_DEADZONE_X, 255, 128);
+    } else {
+      steering = map(joystick_x,  JOYSTICK_CENTER_X + JOYSTICK_DEADZONE_X, 4094, 128, 0);
+    }
+
+
+  }
+
+  thrust = constrain(thrust, -255, 255);
+  steering = constrain(steering, 0, 255);
+  
+  
 
   if (current_state == STATE_SLOW) {
     thrust /= 4;
@@ -344,7 +378,7 @@ void Draw_Speedometer() {
   } else if (thrust >= 200) {
     u8g2.drawStr(53, 43, thrust_str);
   } else if (thrust < 0 && thrust > -10) {
-    u8g2.drawStr(55, 43, thrust_str);
+    u8g2.drawStr(57, 43, thrust_str);
   } else if (thrust <= -10 && thrust > -100){
     u8g2.drawStr(53, 43, thrust_str);
   } else if (thrust <= -100 && thrust > -200) {
@@ -352,6 +386,8 @@ void Draw_Speedometer() {
   } else if (thrust <= -200){
     u8g2.drawStr(49, 43, thrust_str);
   }
+
+  
 }
 
 void Draw_Steering() {
@@ -360,14 +396,17 @@ void Draw_Steering() {
   u8g2.drawRFrame(4, 54, 120, 7, 3);
   u8g2.drawBox(62, 54, 4, 7);
 
-  if (steering < 119) {
+  if (steering < 122) {
     int width =  map(steering, 0, 127, 58, 0);
     u8g2.drawRBox(62 - width, 54, width, 7, 3);
+    
 
-  } else if (steering > 135) {
+  } else if (steering > 132) {
     int width = map(steering, 127, 255, 0, 58);
     u8g2.drawRBox(66, 54, width, 7, 3);
   }
+
+ 
 
 }
 
