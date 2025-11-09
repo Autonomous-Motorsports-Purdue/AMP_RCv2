@@ -17,6 +17,7 @@
 #define BUTTON_EBRAKE PA3
 #define BUTTON_SLOW PB6
 #define BUTTON_FAST PF1
+#define BUTTON_AUTO PB7
 
 #define JOYSTICK_DEADZONE_X 150
 #define JOYSTICK_DEADZONE_Y 150
@@ -58,9 +59,14 @@ uint32_t temp_data;
 
 bool lora_ok = false;
 int32_t thrust = 0;
-int32_t steering = 128;
+uint8_t steering = 128;
 char buttons = 0;
 char thrust_str[13];
+
+
+//Initialize packet
+Controller_Packet_T data = {.state = KART_STATE_RC, .throttle = 0, .steering = 128};
+
 
 volatile char state_flag = 0;  //Represents current state (s = slow, e = ebrake, f = fast)
 
@@ -70,7 +76,7 @@ void App_StateMachine_Init() {
   SPI.setSCLK(PB3);
   SPI.setMISO(PA6);
 
-  Serial.println("A");
+  //Serial.println("A");
   ticks_in_state = 0;
   temp_data = 0;
   thrust = 0;
@@ -80,12 +86,12 @@ void App_StateMachine_Init() {
   analogReadResolution(12);
 
   // Initialize OLED
-  Serial.println("A");
+  //Serial.println("A");
   u8g2.begin();
   u8g2.clearBuffer();
 
   // Draw startup logo (if you have AMP image data)
-  Serial.println("A");
+  //Serial.println("A");
   u8g2.setFont(u8g2_font_7x13B_mf);
   
   u8g2.drawXBMP(21, 4, 83, 23, amp_logo); //Draw AMP logo
@@ -95,21 +101,26 @@ void App_StateMachine_Init() {
   delay(1500);
 
   // Initialize LoRa
-  Serial.println("A");
+  //Serial.println("A");
   LoRa.setPins(LORA_CS_PIN, LORA_RST_PIN, LORA_DIO0_PIN);
 
-  Serial.println("A");
+
+  
+
+  //Serial.println("A");
   if (LoRa.begin(915E6)) {
-    Serial.println("LoRa OK");
+    //Serial.println("LoRa OK");
     lora_ok = true;
   } else {
-    Serial.println("LoRa FAILED");
+    //Serial.println("LoRa FAILED");
     lora_ok = false;
   }
 
   pinMode(BUTTON_EBRAKE, INPUT_PULLUP);
   pinMode(BUTTON_SLOW, INPUT_PULLUP);
   pinMode(BUTTON_FAST, INPUT_PULLUP);
+  pinMode(BUTTON_AUTO, INPUT_PULLUP);
+
 
   attachInterrupt(
       BUTTON_EBRAKE, []() { state_flag = 'e'; /* App_StateMachine_ChangeState(STATE_EBRAKE); */ },
@@ -120,6 +131,10 @@ void App_StateMachine_Init() {
 
   attachInterrupt(
       BUTTON_FAST, []() { state_flag = 'f'; /* App_StateMachine_ChangeState(STATE_FAST); */ }, FALLING);
+
+  attachInterrupt(
+      BUTTON_AUTO, []() { state_flag = 'a'; /*  App_StateMachine_ChangeState(STATE_IDLE); */ }, FALLING);
+
 
   // Set initial state
   App_StateMachine_ChangeState(STATE_IDLE);
@@ -137,18 +152,33 @@ void App_StateMachine_Tick() {
   ticks_in_state++; 
 
   
-  uint16_t throttle_y = analogRead(THROTTLE_Y);
+ 
+
+  int16_t throttle_y = analogRead(THROTTLE_Y);
   uint16_t steering_x = analogRead(STEERING_X);
+  
   Controller_setting(steering_x, throttle_y);
+
+  //Update packet
+  //Serial.println(steering);
+
+  data.steering = steering;
+  data.throttle = throttle_y;
+
+  
 
 
   // Clear display buffer
   u8g2.clearBuffer();
 
+  
+
+
 
   // Run state-specific code
   switch (current_state) {
   case STATE_IDLE: {
+    data.state = KART_STATE_AUTO;
     Draw_LoRa_Status();
     u8g2.setFont(u8g2_font_luBS19_tr);
     u8g2.drawStr(35, 50, "IDLE");
@@ -166,6 +196,8 @@ void App_StateMachine_Tick() {
     Draw_Speedometer();
     Draw_Steering();
 
+    data.state = KART_STATE_RC;
+
     /* Demo transition
     if (ticks_in_state > 50) {
       App_StateMachine_ChangeState(STATE_FAST);
@@ -179,6 +211,8 @@ void App_StateMachine_Tick() {
     Draw_Speedometer();
     Draw_Steering();
 
+    data.state = KART_STATE_RC;
+
     /* Demo transition
     if (ticks_in_state > 100) {
       App_StateMachine_ChangeState(STATE_EBRAKE);
@@ -187,9 +221,11 @@ void App_StateMachine_Tick() {
   }
 
   case STATE_EBRAKE: {
-    // Flashing effect
+    //Update packet 
+    data.state = KART_STATE_EBRAKE;
 
-    
+
+    // Flashing effect
 
     if ((ticks_in_state / 5) % 2 == 0) {
       u8g2.setDrawColor(1);
@@ -268,6 +304,11 @@ void App_StateMachine_Tick() {
 
   // Send buffer to display
   u8g2.sendBuffer();
+
+  //SEND CONTROLLER PACKET
+  LoRa.beginPacket();
+  LoRa.write((uint8_t*)&data, sizeof(data));
+  LoRa.endPacket(); 
   
 }
 
@@ -302,17 +343,13 @@ void Controller_setting(uint16_t joystick_x, uint16_t joystick_y) {
 if(abs(joystick_x - JOYSTICK_CENTER_X) < JOYSTICK_DEADZONE_X){
     steering = 128;
   } else {
-    if (joystick_x < JOYSTICK_CENTER_X) {
-      steering = map(joystick_x, 0, JOYSTICK_CENTER_X - JOYSTICK_DEADZONE_X, 255, 128);
-    } else {
-      steering = map(joystick_x,  JOYSTICK_CENTER_X + JOYSTICK_DEADZONE_X, 4094, 128, 0);
-    }
-
+    
+      steering = map(joystick_x, 0, 4095, 255, 0);
 
   }
 
   thrust = constrain(thrust, -255, 255);
-  steering = constrain(steering, 0, 255);
+  
   
   
 
@@ -429,4 +466,5 @@ void handleSerialCommand(char cmd) {
     break;
   }
 }
+
 
