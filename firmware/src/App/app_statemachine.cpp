@@ -1,5 +1,6 @@
 #include "App/Inc/app_statemachine.h"
 #include "App/Inc/controller_packet.h"
+#include "App/Inc/oled_image.h"
 #include "WInterrupts.h"
 #include "wiring_constants.h"
 #include "wiring_digital.h"
@@ -8,15 +9,14 @@
 #include <LoRa.h>
 #include <SPI.h>
 #include <U8g2lib.h>
-#include "App/Inc/oled_image.h"
 
 // Pin definitions
 #define OLED_NSS PA11 // CS
 #define OLED_DC PB5   // DC
 #define OLED_RST PB4  // Reset
 #define BUTTON_EBRAKE PA3
-#define BUTTON_SLOW PB6
-#define BUTTON_FAST PF1
+#define BUTTON_FAST PB6
+#define BUTTON_SLOW PF1
 #define BUTTON_AUTO PB7
 
 #define JOYSTICK_DEADZONE_X 150
@@ -50,8 +50,6 @@ U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, OLED_NSS, OLED_DC,
 #define BTN_AUTO 0b00000010
 #define BTN_SLOW 0b00000100
 
-
-
 // Global variables
 State_T current_state;
 volatile uint32_t ticks_in_state;
@@ -63,12 +61,12 @@ uint8_t steering = 128;
 char buttons = 0;
 char thrust_str[13];
 
+// Initialize packet
+Controller_Packet_T data = {
+    .state = KART_STATE_RC, .throttle = 0, .steering = 128};
 
-//Initialize packet
-Controller_Packet_T data = {.state = KART_STATE_RC, .throttle = 0, .steering = 128};
-
-
-volatile char state_flag = 0;  //Represents current state (s = slow, e = ebrake, f = fast)
+volatile State_T new_state =
+    STATE_IDLE; // Represents current state (s = slow, e = ebrake, f = fast)
 
 void App_StateMachine_Init() {
 
@@ -76,7 +74,7 @@ void App_StateMachine_Init() {
   SPI.setSCLK(PB3);
   SPI.setMISO(PA6);
 
-  //Serial.println("A");
+  // Serial.println("A");
   ticks_in_state = 0;
   temp_data = 0;
   thrust = 0;
@@ -86,33 +84,30 @@ void App_StateMachine_Init() {
   analogReadResolution(12);
 
   // Initialize OLED
-  //Serial.println("A");
+  // Serial.println("A");
   u8g2.begin();
   u8g2.clearBuffer();
 
   // Draw startup logo (if you have AMP image data)
-  //Serial.println("A");
+  // Serial.println("A");
   u8g2.setFont(u8g2_font_7x13B_mf);
-  
-  u8g2.drawXBMP(21, 4, 83, 23, amp_logo); //Draw AMP logo
+
+  u8g2.drawXBMP(21, 4, 83, 23, amp_logo); // Draw AMP logo
   u8g2.drawStr(30, 42, "Controller");
   u8g2.drawStr(38, 57, "Startup");
   u8g2.sendBuffer();
   delay(1500);
 
   // Initialize LoRa
-  //Serial.println("A");
+  // Serial.println("A");
   LoRa.setPins(LORA_CS_PIN, LORA_RST_PIN, LORA_DIO0_PIN);
 
-
-  
-
-  //Serial.println("A");
+  // Serial.println("A");
   if (LoRa.begin(915E6)) {
-    //Serial.println("LoRa OK");
+    // Serial.println("LoRa OK");
     lora_ok = true;
   } else {
-    //Serial.println("LoRa FAILED");
+    // Serial.println("LoRa FAILED");
     lora_ok = false;
   }
 
@@ -121,59 +116,66 @@ void App_StateMachine_Init() {
   pinMode(BUTTON_FAST, INPUT_PULLUP);
   pinMode(BUTTON_AUTO, INPUT_PULLUP);
 
-
   attachInterrupt(
-      BUTTON_EBRAKE, []() { state_flag = 'e'; /* App_StateMachine_ChangeState(STATE_EBRAKE); */ },
+      BUTTON_EBRAKE,
+      []() {
+        // state_flag = 'e'; /* App_StateMachine_ChangeState(STATE_EBRAKE); */
+        new_state = STATE_EBRAKE;
+      },
       FALLING);
 
   attachInterrupt(
-      BUTTON_SLOW, []() { state_flag = 's'; /* App_StateMachine_ChangeState(STATE_SLOW); */ }, FALLING);
+      BUTTON_SLOW,
+      []() {
+        // state_flag = 's'; /* App_StateMachine_ChangeState(STATE_SLOW); */
+        new_state = STATE_SLOW;
+      },
+      FALLING);
 
   attachInterrupt(
-      BUTTON_FAST, []() { state_flag = 'f'; /* App_StateMachine_ChangeState(STATE_FAST); */ }, FALLING);
+      BUTTON_FAST,
+      []() {
+        // state_flag = 'f'; /* App_StateMachine_ChangeState(STATE_FAST); */
+        new_state = STATE_FAST;
+      },
+      FALLING);
 
   attachInterrupt(
-      BUTTON_AUTO, []() { state_flag = 'a'; /*  App_StateMachine_ChangeState(STATE_IDLE); */ }, FALLING);
-
+      BUTTON_AUTO,
+      []() {
+        // state_flag = 'a'; /*  App_StateMachine_ChangeState(STATE_IDLE); */
+        new_state = STATE_IDLE;
+      },
+      FALLING);
 
   // Set initial state
   App_StateMachine_ChangeState(STATE_IDLE);
-
 }
 
-
-
 void App_StateMachine_Tick() {
+  if (new_state != current_state) {
+    App_StateMachine_ChangeState(new_state);
+  }
 
   LoRa.beginPacket();
   LoRa.print("Test");
   LoRa.endPacket();
 
-  ticks_in_state++; 
-
-  
- 
+  ticks_in_state++;
 
   int16_t throttle_y = analogRead(THROTTLE_Y);
   uint16_t steering_x = analogRead(STEERING_X);
-  
+
   Controller_setting(steering_x, throttle_y);
 
-  //Update packet
-  //Serial.println(steering);
+  // Update packet
+  // Serial.println(steering);
 
   data.steering = steering;
-  data.throttle = throttle_y;
-
-  
-
+  data.throttle = thrust;
 
   // Clear display buffer
   u8g2.clearBuffer();
-
-  
-
-
 
   // Run state-specific code
   switch (current_state) {
@@ -221,9 +223,8 @@ void App_StateMachine_Tick() {
   }
 
   case STATE_EBRAKE: {
-    //Update packet 
+    // Update packet
     data.state = KART_STATE_EBRAKE;
-
 
     // Flashing effect
 
@@ -233,31 +234,21 @@ void App_StateMachine_Tick() {
       u8g2.setDrawColor(0);
     } else {
       u8g2.setDrawColor(1);
-    } 
-    
-    
+    }
 
-    
+    if (((ticks_in_state / 5) + 4) % 6 == 0) {
 
-    if (((ticks_in_state  / 5) + 4) % 6 == 0) {
+      u8g2.drawXBMP(39, 2, 49, 66, brake_sign); // Brake image
 
-      u8g2.drawXBMP(39, 2, 49, 66, brake_sign); //Brake image
-    
     } else {
 
       u8g2.setFont(u8g2_font_luBS19_tr);
       u8g2.drawStr(10, 54, "EBRAKE");
-      
-      
     }
-    
 
     Draw_LoRa_Status();
 
-    u8g2.setDrawColor(1); 
-    
-    
-    
+    u8g2.setDrawColor(1);
 
     if (ticks_in_state > (EBRAKE_MIN_SEC * TICKS_PER_SEC)) {
       // Can exit e-brake after minimum time
@@ -278,87 +269,71 @@ void App_StateMachine_Tick() {
       u8g2.setDrawColor(1);
     }
 
+    if (((ticks_in_state / 5) + 4) % 6 == 0) {
 
-    if (((ticks_in_state  / 5) + 4) % 6 == 0) {
-
-
-      u8g2.drawXBMP(33, 9, 62, 59, caution_image); //Draw caution image
+      u8g2.drawXBMP(33, 9, 62, 59, caution_image); // Draw caution image
       Draw_LoRa_Status();
-    
+
     } else {
 
       u8g2.setFont(u8g2_font_luBS19_tr);
       u8g2.drawStr(16, 54, "ERROR");
       Draw_LoRa_Status();
-
-      
     }
-  
 
     break;
-
-
-    
   }
   }
 
   // Send buffer to display
   u8g2.sendBuffer();
 
-  //SEND CONTROLLER PACKET
+  // SEND CONTROLLER PACKET
   LoRa.beginPacket();
-  LoRa.write((uint8_t*)&data, sizeof(data));
-  LoRa.endPacket(); 
-  
+  LoRa.write((uint8_t *)&data, sizeof(data));
+  LoRa.endPacket();
 }
 
 void App_StateMachine_ChangeState(State_T new_state) {
-
 
   ticks_in_state = 0;
   temp_data = 0;
   current_state = new_state;
 
   // Print state change for debugging
-  //Serial.print("State changed to: ");
-  //Serial.println(new_state);
+  // Serial.print("State changed to: ");
+  // Serial.println(new_state);
 }
 
 void Controller_setting(uint16_t joystick_x, uint16_t joystick_y) {
   // Convert joystick values to thrust and steering
-  
 
-  if(abs(joystick_y - JOYSTICK_CENTER_Y) < JOYSTICK_DEADZONE_Y){
+  if (abs(joystick_y - JOYSTICK_CENTER_Y) < JOYSTICK_DEADZONE_Y) {
     thrust = 0;
   } else {
     if (joystick_y < JOYSTICK_CENTER_Y) {
-    thrust = map(joystick_y, 0, JOYSTICK_CENTER_Y - JOYSTICK_DEADZONE_Y, -255, 0);
+      thrust =
+          map(joystick_y, 0, JOYSTICK_CENTER_Y - JOYSTICK_DEADZONE_Y, -255, 0);
     } else {
-      thrust = map(joystick_y,  JOYSTICK_CENTER_Y + JOYSTICK_DEADZONE_Y, 4094, 0, 255);
+      thrust = map(joystick_y, JOYSTICK_CENTER_Y + JOYSTICK_DEADZONE_Y, 4094, 0,
+                   255);
     }
-
-
   }
 
-if(abs(joystick_x - JOYSTICK_CENTER_X) < JOYSTICK_DEADZONE_X){
+  if (abs(joystick_x - JOYSTICK_CENTER_X) < JOYSTICK_DEADZONE_X) {
     steering = 128;
   } else {
-    
-      steering = map(joystick_x, 0, 4095, 255, 0);
 
+    steering = map(joystick_x, 0, 4095, 255, 0);
   }
 
-  thrust = constrain(thrust, -255, 255);
-  
-  
-  
+  thrust = constrain(thrust, -255, 255) * 20;
 
   if (current_state == STATE_SLOW) {
     thrust /= 4;
   } else if (current_state == STATE_FAST) {
     thrust /= 2;
   }
-
 }
 
 void Draw_LoRa_Status() {
@@ -374,7 +349,7 @@ void Draw_LoRa_Status() {
 
 void Draw_State_Normal() {
 
-  u8g2.setDrawColor(1); 
+  u8g2.setDrawColor(1);
 
   u8g2.setFont(u8g2_font_6x10_tr);
   u8g2.drawStr(3, 12, "State:");
@@ -389,22 +364,16 @@ void Draw_State_Normal() {
 
 void Draw_Speedometer() {
   // Draw speedometer arc (Multiple functions for more thickness)
-  
+
   u8g2.drawCircle(65, 44, 20, U8G2_DRAW_UPPER_LEFT | U8G2_DRAW_UPPER_RIGHT);
   u8g2.drawCircle(65, 44, 21, U8G2_DRAW_UPPER_LEFT | U8G2_DRAW_UPPER_RIGHT);
   u8g2.drawCircle(65, 44, 22, U8G2_DRAW_UPPER_LEFT | U8G2_DRAW_UPPER_RIGHT);
-  
-  
-
-  
 
   // Draw thrust value
 
-
   sprintf(thrust_str, "%02ld", thrust);
 
- 
-  //Shifts thrust value if it changes number of digits or sign
+  // Shifts thrust value if it changes number of digits or sign
   u8g2.setFont(u8g2_font_tenthinguys_tu);
   if (thrust >= 100 && thrust < 200) {
     u8g2.drawStr(55, 43, thrust_str);
@@ -416,15 +385,13 @@ void Draw_Speedometer() {
     u8g2.drawStr(53, 43, thrust_str);
   } else if (thrust < 0 && thrust > -10) {
     u8g2.drawStr(57, 43, thrust_str);
-  } else if (thrust <= -10 && thrust > -100){
+  } else if (thrust <= -10 && thrust > -100) {
     u8g2.drawStr(53, 43, thrust_str);
   } else if (thrust <= -100 && thrust > -200) {
     u8g2.drawStr(51, 43, thrust_str);
-  } else if (thrust <= -200){
+  } else if (thrust <= -200) {
     u8g2.drawStr(49, 43, thrust_str);
   }
-
-  
 }
 
 void Draw_Steering() {
@@ -434,17 +401,13 @@ void Draw_Steering() {
   u8g2.drawBox(62, 54, 4, 7);
 
   if (steering < 122) {
-    int width =  map(steering, 0, 127, 58, 0);
+    int width = map(steering, 0, 127, 58, 0);
     u8g2.drawRBox(62 - width, 54, width, 7, 3);
-    
 
   } else if (steering > 132) {
     int width = map(steering, 127, 255, 0, 58);
     u8g2.drawRBox(66, 54, width, 7, 3);
   }
-
- 
-
 }
 
 void handleSerialCommand(char cmd) {
@@ -466,5 +429,3 @@ void handleSerialCommand(char cmd) {
     break;
   }
 }
-
-
